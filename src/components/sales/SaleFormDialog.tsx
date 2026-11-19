@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { useState } from "react";
 import type { FormEvent } from "react";
 import type { VendaDTO } from "@/types/venda.dto";
 import type { Venda } from "@/types/venda";
@@ -23,31 +24,70 @@ interface SaleFormDialogProps {
   venda?: Venda | null;
 }
 
+interface VendaFormState {
+  cliente: string;
+  produto: string;
+  quantidade: string;
+  valorTotal: string;
+  formaPagamento: VendaDTO["formaPagamento"] | "";
+  statusVenda: VendaDTO["statusVenda"] | "";
+  statusPagamento: VendaDTO["statusPagamento"] | "";
+  dataVenda: string;
+  observacao: string;
+}
+
+function obterValoresIniciais(venda?: Venda | null): VendaFormState {
+  return {
+    cliente: venda?.cliente ?? "",
+    produto: venda?.produto ?? "",
+    quantidade: venda?.quantidade.toString() ?? "",
+    valorTotal: venda?.valorTotal.toString() ?? "",
+    formaPagamento: venda?.formaPagamento ?? "",
+    statusVenda: venda?.statusVenda ?? "",
+    statusPagamento: venda?.statusPagamento ?? "",
+    dataVenda: venda?.dataVenda.slice(0, 10) ?? "",
+    observacao: venda?.observacao ?? "",
+  };
+}
+
 function SaleFormDialog({
   open,
   onOpenChange,
   onSuccess,
   venda,
 }: SaleFormDialogProps) {
+  const [formulario, setFormulario] = useState<VendaFormState>(() =>
+    obterValoresIniciais(venda),
+  );
+  const [salvando, setSalvando] = useState(false);
+
+  function atualizarCampo<K extends keyof VendaFormState>(
+    campo: K,
+    valor: VendaFormState[K],
+  ) {
+    setFormulario((estadoAtual) => ({
+      ...estadoAtual,
+      [campo]: valor,
+    }));
+  }
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const formData = new FormData(event.currentTarget);
+    if (salvando) return;
+
+    setSalvando(true);
 
     const dados: VendaDTO = {
-      cliente: String(formData.get("cliente")),
-      produto: String(formData.get("produto")),
-      quantidade: Number(formData.get("quantidade")),
-      valorTotal: Number(formData.get("valorTotal")),
-      formaPagamento: formData.get(
-        "formaPagamento",
-      ) as VendaDTO["formaPagamento"],
-      statusVenda: formData.get("statusVenda") as VendaDTO["statusVenda"],
-      statusPagamento: formData.get(
-        "statusPagamento",
-      ) as VendaDTO["statusPagamento"],
-      dataVenda: String(formData.get("dataVenda")),
-      observacao: String(formData.get("observacao") ?? "").trim() || undefined,
+      cliente: formulario.cliente,
+      produto: formulario.produto,
+      quantidade: Number(formulario.quantidade),
+      valorTotal: Number(formulario.valorTotal),
+      formaPagamento: formulario.formaPagamento as VendaDTO["formaPagamento"],
+      statusVenda: formulario.statusVenda as VendaDTO["statusVenda"],
+      statusPagamento:
+        formulario.statusPagamento as VendaDTO["statusPagamento"],
+      dataVenda: formulario.dataVenda,
+      observacao: formulario.observacao.trim() || undefined,
     };
 
     try {
@@ -69,6 +109,8 @@ function SaleFormDialog({
           ? "Não foi possível atualizar a venda."
           : "Não foi possível cadastrar a venda.",
       );
+    } finally {
+      setSalvando(false);
     }
   }
 
@@ -100,7 +142,10 @@ function SaleFormDialog({
                 id="cliente"
                 name="cliente"
                 placeholder="Digite o nome do cliente"
-                defaultValue={venda?.cliente ?? ""}
+                value={formulario.cliente}
+                onChange={(event) =>
+                  atualizarCampo("cliente", event.target.value)
+                }
                 required
               />
             </div>
@@ -111,7 +156,10 @@ function SaleFormDialog({
                 id="produto"
                 name="produto"
                 placeholder="Digite o nome do produto"
-                defaultValue={venda?.produto ?? ""}
+                value={formulario.produto}
+                onChange={(event) =>
+                  atualizarCampo("produto", event.target.value)
+                }
                 required
               />
             </div>
@@ -124,7 +172,10 @@ function SaleFormDialog({
                 type="number"
                 min="1"
                 placeholder="Digite a quantidade"
-                defaultValue={venda?.quantidade ?? ""}
+                value={formulario.quantidade}
+                onChange={(event) =>
+                  atualizarCampo("quantidade", event.target.value)
+                }
                 required
               />
             </div>
@@ -138,7 +189,10 @@ function SaleFormDialog({
                 min="0.01"
                 step="0.01"
                 placeholder="0,00"
-                defaultValue={venda?.valorTotal ?? ""}
+                value={formulario.valorTotal}
+                onChange={(event) =>
+                  atualizarCampo("valorTotal", event.target.value)
+                }
                 required
               />
             </div>
@@ -149,7 +203,13 @@ function SaleFormDialog({
                 id="formaPagamento"
                 name="formaPagamento"
                 className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                defaultValue={venda?.formaPagamento ?? ""}
+                value={formulario.formaPagamento}
+                onChange={(event) =>
+                  atualizarCampo(
+                    "formaPagamento",
+                    event.target.value as VendaFormState["formaPagamento"],
+                  )
+                }
                 required
               >
                 <option value="" disabled>
@@ -166,7 +226,13 @@ function SaleFormDialog({
                 id="statusVenda"
                 name="statusVenda"
                 className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                defaultValue={venda?.statusVenda ?? ""}
+                value={formulario.statusVenda}
+                onChange={(event) =>
+                  atualizarCampo(
+                    "statusVenda",
+                    event.target.value as VendaFormState["statusVenda"],
+                  )
+                }
                 required
               >
                 <option value="" disabled>
@@ -185,7 +251,13 @@ function SaleFormDialog({
                 id="statusPagamento"
                 name="statusPagamento"
                 className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                defaultValue={venda?.statusPagamento ?? ""}
+                value={formulario.statusPagamento}
+                onChange={(event) =>
+                  atualizarCampo(
+                    "statusPagamento",
+                    event.target.value as VendaFormState["statusPagamento"],
+                  )
+                }
                 required
               >
                 <option value="" disabled>
@@ -202,7 +274,10 @@ function SaleFormDialog({
                 id="dataVenda"
                 name="dataVenda"
                 type="date"
-                defaultValue={venda?.dataVenda.slice(0, 10) ?? ""}
+                value={formulario.dataVenda}
+                onChange={(event) =>
+                  atualizarCampo("dataVenda", event.target.value)
+                }
                 required
               />
             </div>
@@ -213,7 +288,10 @@ function SaleFormDialog({
                 id="observacao"
                 name="observacao"
                 placeholder="Adicione alguma observação sobre a venda (opcional)"
-                defaultValue={venda?.observacao ?? ""}
+                value={formulario.observacao}
+                onChange={(event) =>
+                  atualizarCampo("observacao", event.target.value)
+                }
                 rows={3}
               />
             </div>
@@ -228,8 +306,12 @@ function SaleFormDialog({
             Cancelar
           </Button>
 
-          <Button type="submit" form="sale-form">
-            {venda ? "Salvar alterações" : "Cadastrar venda"}
+          <Button type="submit" form="sale-form" disabled={salvando}>
+            {salvando
+              ? "Salvando..."
+              : venda
+                ? "Salvar alterações"
+                : "Cadastrar venda"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -232,6 +232,7 @@ function SalesTable({ vendas, carregando, erro, onRefresh }: SalesTableProps) {
         </CardContent>
       </Card>
       <SaleFormDialog
+        key={`${vendaSelecionada?.id ?? "nova"}-${dialogAberto}`}
         open={dialogAberto}
         onOpenChange={setDialogAberto}
         onSuccess={onRefresh}
