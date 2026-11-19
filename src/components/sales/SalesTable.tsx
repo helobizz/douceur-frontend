@@ -3,6 +3,7 @@ import { Search, Plus, Pencil, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import SaleFormDialog from "@/components/sales/SaleFormDialog";
 import { excluirVenda } from "@/services/api";
 import {
@@ -34,6 +35,21 @@ function SalesTable({ vendas, carregando, erro, onRefresh }: SalesTableProps) {
   function abrirEdicao(venda: Venda) {
     setVendaSelecionada(venda);
     setDialogAberto(true);
+  }
+
+  function obterVarianteStatus(status: Venda["statusVenda"]) {
+    switch (status) {
+      case "RESERVADA":
+        return "secondary";
+      case "ENCOMENDADA":
+        return "outline";
+      case "ENTREGUE":
+        return "default";
+      case "CANCELADA":
+        return "destructive";
+      default:
+        return "secondary";
+    }
   }
 
   async function confirmarExclusao() {
@@ -167,7 +183,23 @@ function SalesTable({ vendas, carregando, erro, onRefresh }: SalesTableProps) {
                       </td>
                       <td className="px-4 py-3">{venda.formaPagamento}</td>
                       <td className="px-4 py-3">
-                        {venda.statusVenda} · {venda.statusPagamento}
+                        <div className="flex flex-wrap gap-2">
+                          <Badge
+                            variant={obterVarianteStatus(venda.statusVenda)}
+                          >
+                            {venda.statusVenda}
+                          </Badge>
+
+                          <Badge
+                            variant={
+                              venda.statusPagamento === "PAGO"
+                                ? "default"
+                                : "destructive"
+                            }
+                          >
+                            {venda.statusPagamento}
+                          </Badge>
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
