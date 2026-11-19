@@ -1,10 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Search, Plus, Pencil, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import SaleFormDialog from "@/components/sales/SaleFormDialog";
-import { excluirVenda, listarVendas } from "@/services/api";
+import { excluirVenda } from "@/services/api";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,38 +18,18 @@ import {
 import type { Venda } from "@/types/venda";
 import { toast } from "sonner";
 
-function SalesTable() {
+interface SalesTableProps {
+  vendas: Venda[];
+  carregando: boolean;
+  erro: string;
+  onRefresh: () => Promise<void>;
+}
+
+function SalesTable({ vendas, carregando, erro, onRefresh }: SalesTableProps) {
   const [termoPesquisa, setTermoPesquisa] = useState("");
   const [dialogAberto, setDialogAberto] = useState(false);
-  const [vendas, setVendas] = useState<Venda[]>([]);
   const [vendaSelecionada, setVendaSelecionada] = useState<Venda | null>(null);
   const [vendaParaExcluir, setVendaParaExcluir] = useState<Venda | null>(null);
-  const [carregando, setCarregando] = useState(true);
-  const [erro, setErro] = useState("");
-
-  useEffect(() => {
-    listarVendas()
-      .then((dados) => {
-        setVendas(dados);
-      })
-      .catch((error) => {
-        setErro("Não foi possível carregar as vendas.");
-        console.error("Erro ao buscar vendas:", error);
-      })
-      .finally(() => {
-        setCarregando(false);
-      });
-  }, []);
-
-  async function listarVendasAtualizadas() {
-    try {
-      const dados = await listarVendas();
-      setVendas(dados);
-    } catch (error) {
-      setErro("Não foi possível atualizar a lista de vendas.");
-      console.error("Erro ao atualizar vendas:", error);
-    }
-  }
 
   function abrirEdicao(venda: Venda) {
     setVendaSelecionada(venda);
@@ -65,7 +45,7 @@ function SalesTable() {
       toast.success("Venda excluída com sucesso!");
 
       setVendaParaExcluir(null);
-      await listarVendasAtualizadas();
+      await onRefresh();
     } catch (error) {
       console.error("Erro ao excluir venda:", error);
       toast.error("Não foi possível excluir a venda.");
@@ -222,7 +202,7 @@ function SalesTable() {
       <SaleFormDialog
         open={dialogAberto}
         onOpenChange={setDialogAberto}
-        onSuccess={listarVendasAtualizadas}
+        onSuccess={onRefresh}
         venda={vendaSelecionada}
       />
 
