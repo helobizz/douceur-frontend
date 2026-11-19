@@ -12,19 +12,22 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import type { FormEvent } from "react";
 import type { VendaDTO } from "@/types/venda.dto";
-import { cadastrarVenda } from "@/services/api";
+import type { Venda } from "@/types/venda";
+import { atualizarVenda, cadastrarVenda } from "@/services/api";
 import { toast } from "sonner";
 
 interface SaleFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+  venda?: Venda | null;
 }
 
 function SaleFormDialog({
   open,
   onOpenChange,
   onSuccess,
+  venda,
 }: SaleFormDialogProps) {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -48,15 +51,24 @@ function SaleFormDialog({
     };
 
     try {
-      await cadastrarVenda(dados);
-
-      toast.success("Venda cadastrada com sucesso!");
+      if (venda) {
+        await atualizarVenda(venda.id, dados);
+        toast.success("Venda atualizada com sucesso!");
+      } else {
+        await cadastrarVenda(dados);
+        toast.success("Venda cadastrada com sucesso!");
+      }
 
       onSuccess();
       onOpenChange(false);
     } catch (error) {
-      console.error("Erro ao cadastrar venda:", error);
-      toast.error("Não foi possível cadastrar a venda.")
+      console.error("Erro ao salvar venda:", error);
+
+      toast.error(
+        venda
+          ? "Não foi possível atualizar a venda."
+          : "Não foi possível cadastrar a venda.",
+      );
     }
   }
 
@@ -65,15 +77,22 @@ function SaleFormDialog({
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="font-semibold text-xl">
-            Nova venda
+            {venda ? "Editar venda" : "Nova venda"}
           </DialogTitle>
 
           <DialogDescription>
-            Preencha os dados abaixo para cadastrar uma nova venda.
+            {venda
+              ? "Altere os dados da venda selecionada."
+              : "Preencha os dados abaixo para cadastrar uma nova venda."}
           </DialogDescription>
         </DialogHeader>
 
-        <form id="sale-form" className="space-y-6" onSubmit={handleSubmit}>
+        <form
+          key={venda?.id ?? "nova"}
+          id="sale-form"
+          className="space-y-6"
+          onSubmit={handleSubmit}
+        >
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="cliente">Nome do cliente</Label>
@@ -81,6 +100,7 @@ function SaleFormDialog({
                 id="cliente"
                 name="cliente"
                 placeholder="Digite o nome do cliente"
+                defaultValue={venda?.cliente ?? ""}
                 required
               />
             </div>
@@ -91,6 +111,7 @@ function SaleFormDialog({
                 id="produto"
                 name="produto"
                 placeholder="Digite o nome do produto"
+                defaultValue={venda?.produto ?? ""}
                 required
               />
             </div>
@@ -103,6 +124,7 @@ function SaleFormDialog({
                 type="number"
                 min="1"
                 placeholder="Digite a quantidade"
+                defaultValue={venda?.quantidade ?? ""}
                 required
               />
             </div>
@@ -116,6 +138,7 @@ function SaleFormDialog({
                 min="0.01"
                 step="0.01"
                 placeholder="0,00"
+                defaultValue={venda?.valorTotal ?? ""}
                 required
               />
             </div>
@@ -126,7 +149,7 @@ function SaleFormDialog({
                 id="formaPagamento"
                 name="formaPagamento"
                 className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                defaultValue=""
+                defaultValue={venda?.formaPagamento ?? ""}
                 required
               >
                 <option value="" disabled>
@@ -143,7 +166,7 @@ function SaleFormDialog({
                 id="statusVenda"
                 name="statusVenda"
                 className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                defaultValue=""
+                defaultValue={venda?.statusVenda ?? ""}
                 required
               >
                 <option value="" disabled>
@@ -162,7 +185,7 @@ function SaleFormDialog({
                 id="statusPagamento"
                 name="statusPagamento"
                 className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                defaultValue=""
+                defaultValue={venda?.statusPagamento ?? ""}
                 required
               >
                 <option value="" disabled>
@@ -175,7 +198,13 @@ function SaleFormDialog({
 
             <div className="space-y-2">
               <Label htmlFor="dataVenda">Data da venda</Label>
-              <Input id="dataVenda" name="dataVenda" type="date" required />
+              <Input
+                id="dataVenda"
+                name="dataVenda"
+                type="date"
+                defaultValue={venda?.dataVenda.slice(0, 10) ?? ""}
+                required
+              />
             </div>
 
             <div className="space-y-2 sm:col-span-2">
@@ -184,6 +213,7 @@ function SaleFormDialog({
                 id="observacao"
                 name="observacao"
                 placeholder="Adicione alguma observação sobre a venda (opcional)"
+                defaultValue={venda?.observacao ?? ""}
                 rows={3}
               />
             </div>
@@ -199,7 +229,7 @@ function SaleFormDialog({
           </Button>
 
           <Button type="submit" form="sale-form">
-            Cadastrar venda
+            {venda ? "Salvar alterações" : "Cadastrar venda"}
           </Button>
         </DialogFooter>
       </DialogContent>

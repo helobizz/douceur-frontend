@@ -1,17 +1,29 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Search } from "lucide-react";
+import { Search, Plus, Pencil, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useEffect, useState } from "react";
-import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import SaleFormDialog from "@/components/sales/SaleFormDialog";
-import { listarVendas } from "@/services/api";
+import { excluirVenda, listarVendas } from "@/services/api";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { Venda } from "@/types/venda";
+import { toast } from "sonner";
 
 function SalesTable() {
   const [termoPesquisa, setTermoPesquisa] = useState("");
   const [dialogAberto, setDialogAberto] = useState(false);
   const [vendas, setVendas] = useState<Venda[]>([]);
+  const [vendaSelecionada, setVendaSelecionada] = useState<Venda | null>(null);
+  const [vendaParaExcluir, setVendaParaExcluir] = useState<Venda | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
 
@@ -39,6 +51,36 @@ function SalesTable() {
     }
   }
 
+  function abrirEdicao(venda: Venda) {
+    setVendaSelecionada(venda);
+    setDialogAberto(true);
+  }
+
+  async function confirmarExclusao() {
+    if (!vendaParaExcluir) return;
+
+    try {
+      await excluirVenda(vendaParaExcluir.id);
+
+      toast.success("Venda excluída com sucesso!");
+
+      setVendaParaExcluir(null);
+      await listarVendasAtualizadas();
+    } catch (error) {
+      console.error("Erro ao excluir venda:", error);
+      toast.error("Não foi possível excluir a venda.");
+    }
+  }
+
+  const vendasFiltradas = vendas.filter((venda) => {
+    const termo = termoPesquisa.trim().toLocaleLowerCase();
+
+    return (
+      venda.cliente.toLocaleLowerCase().includes(termo) ||
+      venda.produto.toLocaleLowerCase().includes(termo)
+    );
+  });
+
   return (
     <section className="space-y-4">
       <div>
@@ -52,37 +94,38 @@ function SalesTable() {
       </div>
 
       <Card>
-        <CardHeader>
-          <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <CardTitle className="font-sans text-primary">
-              Lista de vendas
-            </CardTitle>
+        <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <CardTitle className="font-sans text-primary">
+            Lista de vendas
+          </CardTitle>
 
-            <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
-              <div className="relative w-full sm:max-w-xs">
-                <Search
-                  size={18}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                />
+          <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+            <div className="relative w-full sm:max-w-xs">
+              <Search
+                size={18}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+              />
 
-                <Input
-                  type="text"
-                  placeholder="Pesquisar vendas..."
-                  className="h-10 pl-10"
-                  value={termoPesquisa}
-                  onChange={(event) => setTermoPesquisa(event.target.value)}
-                />
-              </div>
-
-              <Button
-                className="h-10 gap-2"
-                onClick={() => setDialogAberto(true)}
-              >
-                <Plus size={18} />
-                Nova venda
-              </Button>
+              <Input
+                type="text"
+                placeholder="Pesquisar vendas..."
+                className="h-10 pl-10"
+                value={termoPesquisa}
+                onChange={(event) => setTermoPesquisa(event.target.value)}
+              />
             </div>
-          </CardHeader>
+
+            <Button
+              className="h-10 gap-2"
+              onClick={() => {
+                setVendaSelecionada(null);
+                setDialogAberto(true);
+              }}
+            >
+              <Plus size={18} />
+              Nova venda
+            </Button>
+          </div>
         </CardHeader>
 
         <CardContent>
@@ -119,17 +162,19 @@ function SalesTable() {
                       {erro}
                     </td>
                   </tr>
-                ) : vendas.length === 0 ? (
+                ) : vendasFiltradas.length === 0 ? (
                   <tr>
                     <td
                       colSpan={7}
                       className="px-4 py-12 text-center text-muted-foreground"
                     >
-                      Nenhuma venda cadastrada.
+                      {termoPesquisa.trim()
+                        ? "Nenhuma venda encontrada para essa pesquisa."
+                        : "Nenhuma venda cadastrada."}
                     </td>
                   </tr>
                 ) : (
-                  vendas.map((venda) => (
+                  vendasFiltradas.map((venda) => (
                     <tr key={venda.id} className="border-b border-border">
                       <td className="px-4 py-3">{venda.cliente}</td>
                       <td className="px-4 py-3">{venda.produto}</td>
@@ -144,7 +189,28 @@ function SalesTable() {
                       <td className="px-4 py-3">
                         {venda.statusVenda} · {venda.statusPagamento}
                       </td>
-                      <td className="px-4 py-3">—</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => abrirEdicao(venda)}
+                          >
+                            <Pencil size={18} />
+                          </Button>
+
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => setVendaParaExcluir(venda)}
+                          >
+                            <Trash2 size={18} />
+                          </Button>
+                        </div>
+                      </td>
                     </tr>
                   ))
                 )}
@@ -157,7 +223,38 @@ function SalesTable() {
         open={dialogAberto}
         onOpenChange={setDialogAberto}
         onSuccess={listarVendasAtualizadas}
+        venda={vendaSelecionada}
       />
+
+      <AlertDialog
+        open={!!vendaParaExcluir}
+        onOpenChange={(open) => {
+          if (!open) setVendaParaExcluir(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-semibold">
+              Excluir venda?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza de que deseja excluir a venda de{" "}
+              <strong>{vendaParaExcluir?.cliente}</strong>? Esta ação não poderá
+              ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmarExclusao}
+              className="bg-destructive text-white hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 }
